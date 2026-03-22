@@ -10,11 +10,10 @@ echo ""
 
 # 1. Update system packages
 echo "[1/4] Updating system packages..."
-# Remove PPAs quebrados que possam causar falha no update (ex: certbot no Ubuntu 24.04)
-find /etc/apt/sources.list.d/ -name "*.list" \
-  -exec grep -l "launchpadcontent.net/certbot" {} \; \
-  | xargs rm -f 2>/dev/null || true
-apt-get update -y
+# Remove certbot PPA — incompatível com Ubuntu 24.04 Noble
+rm -f /etc/apt/sources.list.d/*certbot* 2>/dev/null || true
+# Ignora erros de PPAs restantes para não abortar o script
+apt-get update -y || true
 apt-get upgrade -y
 
 # 2. Install Docker (official script)
