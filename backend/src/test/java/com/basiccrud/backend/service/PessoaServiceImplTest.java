@@ -180,5 +180,59 @@ class PessoaServiceImplTest {
 
         verify(pessoaRepository, never()).deleteById(any());
     }
+
+    @Test
+    @DisplayName("criarLote - deve criar todas as pessoas com sucesso")
+    void criarLote_deveRetornarLista_quandoDadosValidos() {
+        PessoaRequestDTO dto2 = PessoaRequestDTO.builder()
+                .nome("Maria Souza")
+                .email("maria@email.com")
+                .dataNascimento(LocalDate.of(1995, 6, 10))
+                .build();
+
+        Pessoa pessoa2 = Pessoa.builder()
+                .id(UUID.randomUUID())
+                .nome("Maria Souza")
+                .email("maria@email.com")
+                .dataNascimento(LocalDate.of(1995, 6, 10))
+                .build();
+
+        given(pessoaRepository.existsByEmail("joao@email.com")).willReturn(false);
+        given(pessoaRepository.existsByEmail("maria@email.com")).willReturn(false);
+        given(pessoaRepository.saveAll(any())).willReturn(List.of(pessoa, pessoa2));
+
+        List<PessoaResponseDTO> result = pessoaService.criarLote(List.of(requestDTO, dto2));
+
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(PessoaResponseDTO::getEmail)
+                .containsExactlyInAnyOrder("joao@email.com", "maria@email.com");
+        verify(pessoaRepository).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("criarLote - deve lançar exceção quando há email duplicado dentro do lote")
+    void criarLote_deveLancarExcecao_quandoEmailDuplicadoNoBatch() {
+        PessoaRequestDTO duplicado = PessoaRequestDTO.builder()
+                .nome("João Clone")
+                .email("joao@email.com")
+                .dataNascimento(LocalDate.of(1992, 3, 20))
+                .build();
+
+        assertThatThrownBy(() -> pessoaService.criarLote(List.of(requestDTO, duplicado)))
+                .isInstanceOf(EmailAlreadyExistsException.class);
+
+        verify(pessoaRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("criarLote - deve lançar exceção quando email já existe no banco")
+    void criarLote_deveLancarExcecao_quandoEmailJaExisteNoBanco() {
+        given(pessoaRepository.existsByEmail("joao@email.com")).willReturn(true);
+
+        assertThatThrownBy(() -> pessoaService.criarLote(List.of(requestDTO)))
+                .isInstanceOf(EmailAlreadyExistsException.class);
+
+        verify(pessoaRepository, never()).saveAll(any());
+    }
 }
 

@@ -1,5 +1,6 @@
 package com.basiccrud.backend.controller;
 
+import com.basiccrud.backend.dto.PessoaLoteRequestDTO;
 import com.basiccrud.backend.dto.PessoaRequestDTO;
 import com.basiccrud.backend.dto.PessoaResponseDTO;
 import com.basiccrud.backend.exception.EmailAlreadyExistsException;
@@ -185,6 +186,63 @@ class PessoaControllerTest {
     void semAutenticacao_deveRetornar403() throws Exception {
         mockMvc.perform(get("/pessoa/{id}", id))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("POST /pessoas/lote - deve criar pessoas e retornar 201")
+    void criarLote_deveRetornar201_quandoDadosValidos() throws Exception {
+        PessoaRequestDTO dto2 = PessoaRequestDTO.builder()
+                .nome("Maria Souza")
+                .email("maria@email.com")
+                .dataNascimento(LocalDate.of(1995, 6, 10))
+                .build();
+
+        PessoaResponseDTO responseDTO2 = PessoaResponseDTO.builder()
+                .id(UUID.randomUUID())
+                .nome("Maria Souza")
+                .email("maria@email.com")
+                .dataNascimento(LocalDate.of(1995, 6, 10))
+                .build();
+
+        given(pessoaService.criarLote(any())).willReturn(List.of(responseDTO, responseDTO2));
+
+        PessoaLoteRequestDTO body = new PessoaLoteRequestDTO(List.of(requestDTO, dto2));
+
+        mockMvc.perform(post("/pessoas/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].email").value("joao@email.com"))
+                .andExpect(jsonPath("$[1].email").value("maria@email.com"));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("POST /pessoas/lote - deve retornar 400 quando lista está vazia")
+    void criarLote_deveRetornar400_quandoListaVazia() throws Exception {
+        PessoaLoteRequestDTO body = new PessoaLoteRequestDTO(List.of());
+
+        mockMvc.perform(post("/pessoas/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("POST /pessoas/lote - deve retornar 409 quando email já existe")
+    void criarLote_deveRetornar409_quandoEmailDuplicado() throws Exception {
+        given(pessoaService.criarLote(any())).willThrow(new EmailAlreadyExistsException("joao@email.com"));
+
+        PessoaLoteRequestDTO body = new PessoaLoteRequestDTO(List.of(requestDTO));
+
+        mockMvc.perform(post("/pessoas/lote")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isConflict());
     }
 }
 
