@@ -13,7 +13,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -40,6 +44,39 @@ public class PessoaServiceImpl implements PessoaService {
         Pessoa salva = pessoaRepository.save(pessoa);
         log.info("Pessoa criada com id: {}", salva.getId());
         return PessoaResponseDTO.fromEntity(salva);
+    }
+
+    @Override
+    @Transactional
+    public List<PessoaResponseDTO> criarLote(List<PessoaRequestDTO> dtos) {
+        log.info("Criando lote de {} pessoa(s)", dtos.size());
+
+        // Verifica duplicatas dentro do próprio lote
+        Set<String> emailsNoBatch = new HashSet<>();
+        for (PessoaRequestDTO dto : dtos) {
+            if (!emailsNoBatch.add(dto.getEmail().toLowerCase())) {
+                throw new EmailAlreadyExistsException(dto.getEmail());
+            }
+        }
+
+        // Verifica duplicatas contra o banco
+        for (PessoaRequestDTO dto : dtos) {
+            if (pessoaRepository.existsByEmail(dto.getEmail())) {
+                throw new EmailAlreadyExistsException(dto.getEmail());
+            }
+        }
+
+        List<Pessoa> pessoas = dtos.stream()
+                .map(dto -> Pessoa.builder()
+                        .nome(dto.getNome())
+                        .email(dto.getEmail())
+                        .dataNascimento(dto.getDataNascimento())
+                        .build())
+                .collect(Collectors.toList());
+
+        List<Pessoa> salvas = pessoaRepository.saveAll(pessoas);
+        log.info("Lote de {} pessoa(s) criado com sucesso", salvas.size());
+        return salvas.stream().map(PessoaResponseDTO::fromEntity).collect(Collectors.toList());
     }
 
     @Override

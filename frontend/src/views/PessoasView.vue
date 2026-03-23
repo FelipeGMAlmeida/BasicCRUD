@@ -18,9 +18,14 @@ const error = ref('')
 // Modal
 const showModal = ref(false)
 const editMode = ref(false)
-const form = ref({ id: null, name: '', email: '', birthDate: '' })
+const form = ref({ id: null, nome: '', email: '', dataNascimento: '' })
+const forms = ref([])
 const formError = ref('')
 const saving = ref(false)
+
+function emptyPessoa() {
+  return { nome: '', email: '', dataNascimento: '' }
+}
 
 async function fetchPessoas(page = 0) {
   loading.value = true
@@ -39,7 +44,7 @@ async function fetchPessoas(page = 0) {
 
 function openCreate() {
   editMode.value = false
-  form.value = { id: null, nome: '', email: '', dataNascimento: '' }
+  forms.value = [emptyPessoa()]
   formError.value = ''
   showModal.value = true
 }
@@ -51,6 +56,14 @@ function openEdit(pessoa) {
   showModal.value = true
 }
 
+function addCard() {
+  forms.value.push(emptyPessoa())
+}
+
+function removeCard(index) {
+  forms.value.splice(index, 1)
+}
+
 async function save() {
   formError.value = ''
   saving.value = true
@@ -58,7 +71,7 @@ async function save() {
     if (editMode.value) {
       await api.put(`/pessoa/${form.value.id}`, form.value)
     } else {
-      await api.post('/pessoa', form.value)
+      await api.post('/pessoas/lote', { pessoas: forms.value })
     }
     showModal.value = false
     await fetchPessoas(currentPage.value)
@@ -144,21 +157,56 @@ onMounted(() => fetchPessoas())
 
     <!-- Modal Criar / Editar -->
     <div v-if="showModal" class="modal-backdrop" @click.self="showModal = false">
-      <div class="modal">
-        <h2>{{ editMode ? 'Editar Pessoa' : 'Nova Pessoa' }}</h2>
+      <div class="modal" :class="{ 'modal-wide': !editMode }">
+        <h2>{{ editMode ? 'Editar Pessoa' : 'Cadastrar Pessoas' }}</h2>
         <form @submit.prevent="save">
-          <div class="field">
-            <label>Nome</label>
-            <input v-model="form.nome" type="text" required placeholder="Nome completo" />
-          </div>
-          <div class="field">
-            <label>E-mail</label>
-            <input v-model="form.email" type="email" required placeholder="email@exemplo.com" />
-          </div>
-          <div class="field">
-            <label>Data de nascimento</label>
-            <input v-model="form.dataNascimento" type="date" required />
-          </div>
+
+          <!-- EDITAR: form simples -->
+          <template v-if="editMode">
+            <div class="field">
+              <label>Nome</label>
+              <input v-model="form.nome" type="text" required placeholder="Nome completo" />
+            </div>
+            <div class="field">
+              <label>E-mail</label>
+              <input v-model="form.email" type="email" required placeholder="email@exemplo.com" />
+            </div>
+            <div class="field">
+              <label>Data de nascimento</label>
+              <input v-model="form.dataNascimento" type="date" required />
+            </div>
+          </template>
+
+          <!-- CRIAR: cards por pessoa -->
+          <template v-else>
+            <div class="cards-list">
+              <div v-for="(p, index) in forms" :key="index" class="pessoa-card">
+                <div class="card-header">
+                  <span class="card-title">Pessoa {{ index + 1 }}</span>
+                  <button
+                    v-if="forms.length > 1"
+                    type="button"
+                    class="btn-remove-card"
+                    @click="removeCard(index)"
+                  >✕</button>
+                </div>
+                <div class="field">
+                  <label>Nome</label>
+                  <input v-model="p.nome" type="text" required placeholder="Nome completo" />
+                </div>
+                <div class="field">
+                  <label>E-mail</label>
+                  <input v-model="p.email" type="email" required placeholder="email@exemplo.com" />
+                </div>
+                <div class="field">
+                  <label>Data de nascimento</label>
+                  <input v-model="p.dataNascimento" type="date" required />
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn-add-card" @click="addCard">+ Adicionar mais</button>
+          </template>
+
           <p v-if="formError" class="error">{{ formError }}</p>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" @click="showModal = false">Cancelar</button>
@@ -190,8 +238,17 @@ tr:last-child td { border-bottom: none; }
 .pagination button:disabled { opacity: 0.4; cursor: default; }
 .pagination span { font-size: 0.9rem; color: #666; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: #fff; border-radius: 8px; padding: 2rem; width: 100%; max-width: 420px; box-shadow: 0 4px 24px rgba(0,0,0,0.18); }
+.modal { background: #fff; border-radius: 8px; padding: 2rem; width: 100%; max-width: 420px; box-shadow: 0 4px 24px rgba(0,0,0,0.18); max-height: 90vh; overflow-y: auto; }
+.modal-wide { max-width: 680px; }
 .modal h2 { margin: 0 0 1.25rem; font-size: 1.2rem; }
+.cards-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem; }
+.pessoa-card { background: #f8fafb; border: 1px solid #dde3ea; border-radius: 8px; padding: 1rem 1.25rem; position: relative; }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.card-title { font-weight: 600; font-size: 0.9rem; color: #213547; }
+.btn-remove-card { background: none; border: none; color: #e74c3c; font-size: 1rem; cursor: pointer; line-height: 1; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.btn-remove-card:hover { background: #fdecea; }
+.btn-add-card { width: 100%; padding: 0.5rem; border: 2px dashed #42b883; background: none; color: #42b883; border-radius: 6px; cursor: pointer; font-size: 0.9rem; margin-bottom: 1rem; transition: background 0.2s; }
+.btn-add-card:hover { background: #f0faf5; }
 .field { display: flex; flex-direction: column; margin-bottom: 1rem; }
 .field label { font-size: 0.85rem; margin-bottom: 0.3rem; color: #444; }
 .field input { padding: 0.55rem 0.75rem; border: 1px solid #ccc; border-radius: 5px; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }

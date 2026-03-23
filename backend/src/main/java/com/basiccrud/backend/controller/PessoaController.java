@@ -1,5 +1,6 @@
 package com.basiccrud.backend.controller;
 
+import com.basiccrud.backend.dto.PessoaLoteRequestDTO;
 import com.basiccrud.backend.dto.PessoaRequestDTO;
 import com.basiccrud.backend.dto.PessoaResponseDTO;
 import com.basiccrud.backend.service.PessoaService;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -26,6 +28,13 @@ public class PessoaController {
     public ResponseEntity<PessoaResponseDTO> criar(@Valid @RequestBody PessoaRequestDTO dto) {
         log.info("POST /pessoa");
         PessoaResponseDTO response = pessoaService.criar(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/pessoas/lote")
+    public ResponseEntity<List<PessoaResponseDTO>> criarLote(@Valid @RequestBody PessoaLoteRequestDTO dto) {
+        log.info("POST /pessoas/lote - {} pessoa(s)", dto.getPessoas().size());
+        List<PessoaResponseDTO> response = pessoaService.criarLote(dto.getPessoas());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

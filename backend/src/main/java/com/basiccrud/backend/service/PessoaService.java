@@ -5,11 +5,14 @@ import com.basiccrud.backend.dto.PessoaResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface PessoaService {
 
     PessoaResponseDTO criar(PessoaRequestDTO dto);
+
+    List<PessoaResponseDTO> criarLote(List<PessoaRequestDTO> dtos);
 
     PessoaResponseDTO buscarPorId(UUID id);
 
